@@ -280,6 +280,11 @@ class JobPost(BaseModel):
     vacancy_count: int | None = None  #from vacancy
     work_from_home_type: str | None = None  #from clusters.wfhType (e.g., "Hybrid", "Remote")
 
+    # Internshala specific
+    is_internship: bool | None = None  # True if the posting is an internship, False if a job
+    stipend: str | None = None  # Stipend text (e.g., "₹10,000 /month")
+    apply_by: str | None = None  # Application deadline date string
+
 class JobResponse(BaseModel):
     jobs: list[JobPost] = []
 
@@ -292,7 +297,11 @@ class Site(Enum):
     GOOGLE = "google"
     BAYT = "bayt"
     NAUKRI = "naukri"
-    BDJOBS = "bdjobs"  # Add this line
+    BDJOBS = "bdjobs"
+    INTERNSHALA = "internshala"
+    FOUNDIT = "foundit"
+    SHINE = "shine"
+    TIMESJOBS = "timesjobs"
 
 
 class SalarySource(Enum):

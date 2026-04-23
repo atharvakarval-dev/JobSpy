@@ -12,6 +12,10 @@ from jobspy.google import Google
 from jobspy.indeed import Indeed
 from jobspy.linkedin import LinkedIn
 from jobspy.naukri import Naukri
+from jobspy.internshala import Internshala
+from jobspy.foundit import Foundit
+from jobspy.shine import Shine
+from jobspy.timesjobs import TimesJobs
 from jobspy.model import JobType, Location, JobResponse, Country
 from jobspy.model import SalarySource, ScraperInput, Site
 from jobspy.util import (
@@ -63,7 +67,11 @@ def scrape_jobs(
         Site.GOOGLE: Google,
         Site.BAYT: BaytScraper,
         Site.NAUKRI: Naukri,
-        Site.BDJOBS: BDJobs,  # Add BDJobs to the scraper mapping
+        Site.BDJOBS: BDJobs,
+        Site.INTERNSHALA: Internshala,
+        Site.FOUNDIT: Foundit,
+        Site.SHINE: Shine,
+        Site.TIMESJOBS: TimesJobs,
     }
     set_logger_level(verbose)
     job_type = get_enum_from_value(job_type) if job_type else None
@@ -194,6 +202,11 @@ def scrape_jobs(
             job_data["company_reviews_count"] = job_data.get("company_reviews_count")
             job_data["vacancy_count"] = job_data.get("vacancy_count")
             job_data["work_from_home_type"] = job_data.get("work_from_home_type")
+
+            # internshala-specific fields
+            job_data["is_internship"] = job_data.get("is_internship")
+            job_data["stipend"] = job_data.get("stipend")
+            job_data["apply_by"] = job_data.get("apply_by")
 
             job_df = pd.DataFrame([job_data])
             jobs_dfs.append(job_df)

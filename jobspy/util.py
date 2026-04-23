@@ -360,4 +360,8 @@ desired_order = [
     "company_reviews_count",
     "vacancy_count",
     "work_from_home_type",
+    # internshala-specific fields
+    "is_internship",
+    "stipend",
+    "apply_by",
 ]

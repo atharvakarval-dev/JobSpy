@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobSpy Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="mesh-bg"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">🔍</span>
+            <h1>JobSpy<span class="accent">Dashboard</span></h1>
+        </div>
+        <div class="header-status" id="headerStatus">
+            <span class="status-dot idle"></span>
+            <span id="headerStatusText">Ready</span>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- Config Panel -->
+        <section class="panel config-panel glass">
+            <div class="panel-header">
+                <h2>⚙️ Scrape Settings</h2>
+                <button class="btn btn-ghost btn-sm" id="resetBtn" title="Reset">↻ Reset</button>
+            </div>
+
+            <div class="form-group">
+                <label>Search Term</label>
+                <input type="text" id="searchTerm" value="software engineer fresher OR junior developer" placeholder="e.g. software engineer">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="location" value="India" placeholder="e.g. Pune, India">
+                </div>
+                <div class="form-group">
+                    <label>Country (Indeed)</label>
+                    <input type="text" id="countryIndeed" value="India" placeholder="e.g. India, usa">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Results Wanted</label>
+                    <input type="number" id="resultsWanted" value="50" min="1" max="500">
+                </div>
+                <div class="form-group">
+                    <label>Hours Old</label>
+                    <input type="number" id="hoursOld" value="72" min="1" max="720">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Job Type</label>
+                    <select id="jobType">
+                        <option value="any">Any</option>
+                        <option value="fulltime">Full Time</option>
+                        <option value="parttime">Part Time</option>
+                        <option value="internship">Internship</option>
+                        <option value="contract">Contract</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Format</label>
+                    <select id="descFormat">
+                        <option value="markdown">Markdown</option>
+                        <option value="html">HTML</option>
+                        <option value="plain">Plain</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="isRemote"> Remote Only
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>Job Sites</label>
+                <div class="chip-grid" id="siteChips"></div>
+            </div>
+
+            <button class="btn btn-primary btn-lg" id="scrapeBtn">
+                <span class="btn-icon">🚀</span> Start Scraping
+            </button>
+        </section>
+
+        <!-- Results Panel -->
+        <section class="panel results-panel glass">
+            <div class="panel-header">
+                <h2>📊 Results</h2>
+                <div class="results-actions">
+                    <span class="job-count" id="jobCount">0 jobs</span>
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-container" id="progressContainer" style="display:none;">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <p class="progress-text" id="progressText">Starting...</p>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="filter-bar" id="filterBar" style="display:none;">
+                <div class="filter-row">
+                    <input type="text" id="filterText" placeholder="🔎 Filter results..." class="filter-input">
+                    <select id="filterSite" class="filter-select">
+                        <option value="all">All Sites</option>
+                    </select>
+                    <label class="checkbox-label compact">
+                        <input type="checkbox" id="fresherFilter"> Fresher Only
+                    </label>
+                </div>
+                <div class="download-row">
+                    <button class="btn btn-accent btn-sm" id="downloadAllBtn">⬇ Download All CSV</button>
+                    <button class="btn btn-accent btn-sm" id="downloadFresherBtn">⬇ Fresher CSV</button>
+                    <button class="btn btn-ghost btn-sm" id="saveBtn">💾 Save to Disk</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap" id="tableWrap">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">📋</div>
+                    <p>Configure your settings and click <strong>Start Scraping</strong></p>
+                </div>
+                <table class="data-table" id="dataTable" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Site</th>
+                            <th>Title</th>
+                            <th>Company</th>
+                            <th>Location</th>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Salary</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination" style="display:none;">
+                <button class="btn btn-ghost btn-sm" id="prevBtn">← Prev</button>
+                <span id="pageInfo">Page 1</span>
+                <button class="btn btn-ghost btn-sm" id="nextBtn">Next →</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
