@@ -256,7 +256,7 @@ class Glassdoor(Scraper):
             desc = markdown_converter(desc)
         return desc
 
-    def _get_location(self, location: str, is_remote: bool) -> (int, str):
+    def _get_location(self, location: str, is_remote: bool) -> Tuple[int | None, str | None]:
         if not location or is_remote:
             return "11047", "STATE"  # remote options
         url = f"{self.base_url}/findPopularLocationAjax.htm?maxLocationsToReturn=10&term={location}"
