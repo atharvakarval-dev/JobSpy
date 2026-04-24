@@ -13,7 +13,7 @@ import threading
 import time
 from datetime import datetime
 
-from flask import Flask, jsonify, request, send_file, render_template_string
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
 # Add parent dir to path so we can import jobspy

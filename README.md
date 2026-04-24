@@ -18,6 +18,64 @@ pip install -U python-jobspy
 
 _Python version >= [3.10](https://www.python.org/downloads/release/python-3100/) required_
 
+### Enhanced Maximum-Discovery Scraper (CLI)
+
+For a full fresher-first, maximum-coverage workflow (100+ systematic combos, multi-platform scraping, retries, smart dedup, relevance scoring, bond flags, incremental mode, CSV/XLSX/JSON outputs), use:
+
+```bash
+python jobspy_enhanced.py --output all --new-only True
+```
+
+Files added for this workflow:
+
+- `jobspy_enhanced.py`: end-to-end production CLI scraper
+- `config.yaml`: editable keyword banks and defaults
+- `requirements.txt`: pinned dependencies for the enhanced workflow
+
+Quick setup:
+
+```bash
+pip install -r requirements.txt
+```
+
+Common examples:
+
+```bash
+python jobspy_enhanced.py --skills "Python,React,Java" --locations "Bangalore,Remote,Pune" --days 15 --output all --new-only True
+python jobspy_enhanced.py --platforms "linkedin,indeed,glassdoor,zip_recruiter,google" --workers 3 --checkpoint 25
+python jobspy_enhanced.py --proxies proxies.txt --output excel
+```
+
+CLI options:
+
+- `--titles TEXT` comma-separated job titles (default: config bank)
+- `--skills TEXT` comma-separated skills (default: config bank)
+- `--locations TEXT` comma-separated locations (default: config bank)
+- `--days INT` max age of jobs in days (default: 30)
+- `--results INT` results per combo per platform (default: 50)
+- `--platforms TEXT` comma-separated platforms (default: all configured)
+- `--output TEXT` `csv | excel | json | all` (default: `all`)
+- `--new-only BOOL` save incremental new-jobs files and update history (default: `True`)
+- `--proxies TEXT` proxy file path (`proxies.txt`)
+- `--workers INT` max worker threads (default: 3)
+- `--checkpoint INT` partial save interval by combo count (default: 25)
+- `--config TEXT` path to config yaml (default: `config.yaml`)
+
+Enhanced outputs per run:
+
+- `jobs_ALL_YYYYMMDD_HHMMSS.csv`
+- `jobs_ALL_YYYYMMDD_HHMMSS.xlsx` with sheets:
+  - `All Jobs`
+  - `Summary Dashboard`
+  - `Remote Only`
+  - `Bond Flagged`
+  - `High Confidence`
+- `jobs_ALL_YYYYMMDD_HHMMSS.json`
+- `new_jobs_YYYYMMDD_HHMMSS.csv` and `new_jobs_YYYYMMDD_HHMMSS.xlsx` (when `--new-only True`)
+- `seen_jobs.csv` (history of previously seen URLs)
+- `scraper_log_YYYYMMDD_HHMMSS.txt`
+- `checkpoints/partial_results_*.csv` (periodic crash-safe checkpoints)
+
 ### Usage
 
 ```python
