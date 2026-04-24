@@ -32,6 +32,23 @@ NEGATIVE_PATTERNS = [
 
 
 # =============================================================================
+# ROLE NEGATIVE PATTERNS - Non-SDE roles to exclude
+# =============================================================================
+ROLE_NEGATIVE_PATTERNS = [
+    re.compile(r"\b(sales|marketing|business\s+development|bd|telesales|telecaller|advisor|consultant)\b", re.IGNORECASE),
+    re.compile(r"\b(hr|human\s+resources|recruiter|talent\s+acquisition|payroll|admin|back\s+office)\b", re.IGNORECASE),
+    re.compile(r"\b(content\s+writer|editor|copywriter|social\s+media|seo|video\s+editor|host|reel\s+maker)\b", re.IGNORECASE),
+    re.compile(r"\b(accountant|finance|audit|tax|billing|commerce|banking)\b", re.IGNORECASE),
+    re.compile(r"\b(customer\s+support|customer\s+success|call\s+center|operations|ops|logistics|supply\s+chain)\b", re.IGNORECASE),
+    re.compile(r"\b(interior\s+designer|graphic\s+designer|ui/ux\s+designer|fashion\s+designer|instructional\s+designer)\b", re.IGNORECASE),
+    re.compile(r"\b(faculty|teacher|tutor|academic|subject\s+matter\s+expert|sme|education)\b", re.IGNORECASE),
+    re.compile(r"\b(medical|nurse|doctor|healthcare|pharmacist|biotech|clinical)\b", re.IGNORECASE),
+    re.compile(r"\b(mechanical|civil|electrical|electronics|chemical|biotech)\s+engineer\b", re.IGNORECASE),
+    re.compile(r"\b(data\s+entry|secretary|clerk|receptionist|front\s+desk)\b", re.IGNORECASE),
+]
+
+
+# =============================================================================
 # POSITIVE PATTERNS - Jobs matching these get signal tags and scoring
 # =============================================================================
 POSITIVE_PATTERNS = [
@@ -64,6 +81,11 @@ def is_negative_match(text: str) -> bool:
     for pattern in NEGATIVE_PATTERNS:
         if pattern.search(text):
             return True
+
+    for pattern in ROLE_NEGATIVE_PATTERNS:
+        if pattern.search(text):
+            return True
+            
     return False
 
 
