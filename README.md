@@ -1,6 +1,6 @@
-<img src="https://github.com/cullenwatson/JobSpy/assets/78247585/ae185b7e-e444-4712-8bb9-fa97f53e896b" width="400">
+<img src="https://github.com/cullenwatson/CareerRadar/assets/78247585/ae185b7e-e444-4712-8bb9-fa97f53e896b" width="400">
 
-**JobSpy** is a job scraping library with the goal of aggregating all the jobs from popular job boards with one tool.
+**CareerRadar** is a job scraping library with the goal of aggregating all the jobs from popular job boards with one tool.
 
 ## Features
 
@@ -8,12 +8,12 @@
 - Aggregates the job postings in a dataframe
 - Proxies support to bypass blocking
 
-![jobspy](https://github.com/cullenwatson/JobSpy/assets/78247585/ec7ef355-05f6-4fd3-8161-a817e31c5c57)
+![career_radar](https://github.com/cullenwatson/CareerRadar/assets/78247585/ec7ef355-05f6-4fd3-8161-a817e31c5c57)
 
 ### Installation
 
 ```
-pip install -U python-jobspy
+pip install -U python-career_radar
 ```
 
 _Python version >= [3.10](https://www.python.org/downloads/release/python-3100/) required_
@@ -23,12 +23,12 @@ _Python version >= [3.10](https://www.python.org/downloads/release/python-3100/)
 For a full fresher-first, maximum-coverage workflow (100+ systematic combos, multi-platform scraping, retries, smart dedup, relevance scoring, bond flags, incremental mode, CSV/XLSX/JSON outputs), use:
 
 ```bash
-python jobspy_enhanced.py --output all --new-only True
+python engine.py --output all --new-only True
 ```
 
 Files added for this workflow:
 
-- `jobspy_enhanced.py`: end-to-end production CLI scraper
+- `engine.py`: end-to-end production CLI scraper
 - `config.yaml`: editable keyword banks and defaults
 - `requirements.txt`: pinned dependencies for the enhanced workflow
 
@@ -41,9 +41,9 @@ pip install -r requirements.txt
 Common examples:
 
 ```bash
-python jobspy_enhanced.py --skills "Python,React,Java" --locations "Bangalore,Remote,Pune" --days 15 --output all --new-only True
-python jobspy_enhanced.py --platforms "linkedin,indeed,glassdoor,zip_recruiter,google" --workers 3 --checkpoint 25
-python jobspy_enhanced.py --proxies proxies.txt --output excel
+python engine.py --skills "Python,React,Java" --locations "Bangalore,Remote,Pune" --days 15 --output all --new-only True
+python engine.py --platforms "linkedin,indeed,glassdoor,zip_recruiter,google" --workers 3 --checkpoint 25
+python engine.py --proxies proxies.txt --output excel
 ```
 
 CLI options:
@@ -80,7 +80,7 @@ Enhanced outputs per run:
 
 ```python
 import csv
-from jobspy import scrape_jobs
+from career_radar import scrape_jobs
 
 jobs = scrape_jobs(
     site_name=["indeed", "linkedin", "zip_recruiter", "google"], # "glassdoor", "bayt", "naukri", "bdjobs"
@@ -105,7 +105,7 @@ Use the built-in keyword-bank strategy when you want automated query combination
 
 ```python
 import csv
-from jobspy import scrape_smart_fresher_jobs, format_hunt_results
+from career_radar import scrape_smart_fresher_jobs, format_hunt_results
 
 raw = scrape_smart_fresher_jobs(
     top_n_combinations=10,                  # try 10 different keyword combos

@@ -3,15 +3,15 @@ requires = [ "poetry-core",]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "python-jobspy"
+name = "python-career_radar"
 version = "1.1.82"
 description = "Job scraper for LinkedIn, Indeed, Glassdoor, ZipRecruiter & Bayt"
 authors = ["Cullen Watson <cullen@cullenwatson.com>", "Zachary Hampton <zachary@zacharysproducts.com>"]
-homepage = "https://github.com/cullenwatson/JobSpy"
+homepage = "https://github.com/cullenwatson/CareerRadar"
 readme = "README.md"
 keywords = [ "jobs-scraper", "linkedin", "indeed", "glassdoor", "ziprecruiter", "bayt", "naukri"]
 [[tool.poetry.packages]]
-include = "jobspy"
+include = "career_radar"
 
 [tool.black]
 line-length = 88
