@@ -108,7 +108,7 @@ def filter_fresher_jobs(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame
         Filtered DataFrame with fresher_signals and fresher_score columns added
     """
     if df.empty:
-        print("Fetched 0 jobs → 0 passed fresher filter")
+        print("Fetched 0 jobs -> 0 passed fresher filter")
         return df
     
     original_count = len(df)
@@ -154,7 +154,7 @@ def filter_fresher_jobs(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame
         filtered_df["fresher_score"] = pd.Series(dtype="int64")
     
     passed_count = len(filtered_df)
-    print(f"Fetched {original_count} jobs → {passed_count} passed fresher filter")
+    print(f"Fetched {original_count} jobs -> {passed_count} passed fresher filter")
     
     if verbose and dropped_log:
         print("\n--- Dropped Jobs ---")

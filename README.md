@@ -41,6 +41,35 @@ print(jobs.head())
 jobs.to_csv("jobs.csv", quoting=csv.QUOTE_NONNUMERIC, escapechar="\\", index=False) # to_excel
 ```
 
+### Smart Fresher Hunt (India/Entry-Level Strategy)
+
+Use the built-in keyword-bank strategy when you want automated query combinations, fresher filtering, recency fallback, deduplication, and scoring.
+
+```python
+import csv
+from jobspy import scrape_smart_fresher_jobs, format_hunt_results
+
+raw = scrape_smart_fresher_jobs(
+    top_n_combinations=10,                  # try 10 different keyword combos
+    location="India",
+    site_rotation=["linkedin", "naukri", "indeed", "internshala", "glassdoor"],
+    country_indeed="India",
+    results_wanted_per_combo=20,
+    preferred_days_old=7,                   # prefer jobs posted in last 7 days
+    fallback_days_old=30,                   # retry empty combos with wider window
+    enforce_degree_filter=True,             # B.Tech/BE/MCA/BCA/B.Sc keywords
+)
+
+report = format_hunt_results(raw)
+report.to_csv("fresher_hunt_report.csv", quoting=csv.QUOTE_NONNUMERIC, escapechar="\\", index=False)
+```
+
+Returned report columns include:
+- `job_title`, `company_name`, `location`, `experience_required`
+- `key_skills_mentioned`, `application_link`, `date_posted`, `salary_ctc`
+- `keywords_matched`, `platforms_found`, `combination_ids`, `combination_queries`
+- `high_match` (same job found on 2+ platforms), `match_score`
+
 ### Output
 
 ```

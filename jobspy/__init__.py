@@ -31,6 +31,13 @@ from jobspy.util import (
 )
 from jobspy.ziprecruiter import ZipRecruiter
 from jobspy.fresher_filter import filter_fresher_jobs
+from jobspy.smart_hunt import (
+    SearchCombination,
+    generate_search_combinations,
+    scrape_smart_fresher_jobs,
+    format_hunt_results,
+    match_keywords,
+)
 
 
 # Default fresher-focused search queries
@@ -208,6 +215,7 @@ def scrape_jobs(
     country_enum = Country.from_string(country_indeed)
 
     # P6: India country scoping
+    site_types = get_site_type()
     processed_search_term = search_term
     processed_google_search_term = google_search_term
     if country == "India":
@@ -217,12 +225,11 @@ def scrape_jobs(
         if google_search_term and "in India" not in google_search_term:
             processed_google_search_term = f"{google_search_term} in India"
         # Add naukri to sites if not already included
-        site_types = get_site_type()
         if Site.NAUKRI not in site_types:
             site_types.append(Site.NAUKRI)
 
     scraper_input = ScraperInput(
-        site_type=get_site_type(),
+        site_type=site_types,
         country=country_enum,
         search_term=processed_search_term,
         google_search_term=processed_google_search_term,
@@ -267,7 +274,26 @@ def scrape_jobs(
         }
 
         for future in as_completed(future_to_site):
-            site_value, scraped_data = future.result()
+            target_site = future_to_site[future]
+            site_value = target_site.value
+            try:
+                site_value, scraped_data = future.result()
+            except Exception as exc:
+                scraped_data = JobResponse(jobs=[])
+                site_to_jobs_dict[site_value] = scraped_data
+                scrape_metadata[site_value] = {
+                    "requested": scraper_input.results_wanted,
+                    "returned": 0,
+                    "status": "error",
+                    "error": str(exc),
+                }
+                warnings.warn(
+                    ScraperWarning(
+                        f"[{site_value}] Scrape failed and was skipped: {exc}"
+                    )
+                )
+                continue
+
             site_to_jobs_dict[site_value] = scraped_data
             # P1: Track metadata for silent failure detection
             returned_count = len(scraped_data.jobs)
@@ -275,7 +301,7 @@ def scrape_jobs(
             scrape_metadata[site_value] = {
                 "requested": scraper_input.results_wanted,
                 "returned": returned_count,
-                "status": status
+                "status": status,
             }
             # Emit warning if results are significantly lower than requested
             if returned_count < scraper_input.results_wanted * 0.5:
@@ -382,5 +408,10 @@ def scrape_jobs(
 __all__ = [
     "scrape_jobs",
     "scrape_fresher_jobs",
+    "scrape_smart_fresher_jobs",
+    "generate_search_combinations",
+    "format_hunt_results",
+    "match_keywords",
+    "SearchCombination",
     "BDJobs",
 ]
