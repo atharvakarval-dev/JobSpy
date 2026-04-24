@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import sys
 import re
+import math
 from pathlib import Path
 
 # Add the directory containing app.py to sys.path
@@ -16,6 +17,44 @@ try:
 except ImportError as e:
     st.error(f"Failed to import CareerRadar modules: {e}")
     st.stop()
+
+
+def build_smart_queries(search_term: str) -> list[str]:
+    """Builds user-guided search combinations for Smart Fresher Hunt."""
+    cleaned = (search_term or "").strip()
+    if not cleaned:
+        return []
+
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+(?:OR|or)\s+|,|\n|\|", cleaned)
+        if part.strip()
+    ]
+
+    base_terms = [cleaned] + parts
+    variants: list[str] = []
+    for term in base_terms:
+        term_lower = term.lower()
+        variants.append(term)
+        if "fresher" not in term_lower:
+            variants.append(f"{term} fresher")
+        if "entry level" not in term_lower:
+            variants.append(f"{term} entry level")
+        if "junior" not in term_lower:
+            variants.append(f"{term} junior")
+        if "new grad" not in term_lower:
+            variants.append(f"{term} new grad")
+        if "0-2 years" not in term_lower:
+            variants.append(f"{term} 0-2 years")
+
+    unique_queries: list[str] = []
+    seen: set[str] = set()
+    for query in variants:
+        normalized = " ".join(query.split()).strip()
+        if normalized and normalized.lower() not in seen:
+            seen.add(normalized.lower())
+            unique_queries.append(normalized)
+    return unique_queries[:20]
 
 # Set page config
 st.set_page_config(
@@ -197,17 +236,35 @@ if start_scrape:
             try:
                 if strategy == "Smart Fresher Hunt":
                     st.write("Running smart fresher hunt (combining multiple keywords)...")
+                    smart_queries = build_smart_queries(search_term)
+                    preferred_days = max(1, int(math.ceil(hours_old / 24))) if hours_old else 7
                     jobs = scrape_smart_fresher_jobs(
-                        top_n_combinations=5,
+                        top_n_combinations=max(10, len(smart_queries)) if smart_queries else 10,
                         location=location,
                         site_rotation=sites,
+                        search_combinations=smart_queries if smart_queries else None,
                         country_indeed=country_indeed,
                         results_wanted_per_combo=results_wanted,
-                        preferred_days_old=hours_old // 24 if hours_old else 7,
+                        preferred_days_old=preferred_days,
+                        fallback_days_old=max(30, preferred_days + 7),
+                        enforce_degree_filter=False,
                         verbose=0
                     )
-                    st.write("Formatting results...")
-                    jobs = format_hunt_results(jobs)
+                    if jobs.empty:
+                        st.warning("Smart fresher combinations returned 0 results. Running fallback broad scrape with your query...")
+                        jobs = scrape_jobs(
+                            site_name=sites,
+                            search_term=search_term,
+                            location=location,
+                            results_wanted=results_wanted,
+                            hours_old=hours_old,
+                            country_indeed=country_indeed,
+                            job_type=job_type if job_type != "any" else None,
+                            is_remote=is_remote,
+                        )
+                    else:
+                        st.write("Formatting results...")
+                        jobs = format_hunt_results(jobs)
                 else:
                     st.write("Running default scrape...")
                     jobs = scrape_jobs(

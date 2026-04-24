@@ -4,14 +4,13 @@ import math
 import random
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import urlparse, urlunparse, unquote
 
 import regex as re
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
-from career_radar.exception import LinkedInException
 from career_radar.linkedin.constant import headers
 from career_radar.linkedin.util import (
     is_job_remote,
@@ -46,10 +45,10 @@ log = create_logger("LinkedIn")
 
 class LinkedIn(Scraper):
     base_url = "https://www.linkedin.com"
-    delay = 3
-    band_delay = 4
-    jobs_per_page = 25
+    jobs_per_page = 10
     min_delay_ms = 800  # P3: LinkedIn minimum delay enforcement
+    max_retries = 4
+    transient_statuses = {408, 425, 429, 500, 502, 503, 504}
 
     def _get_delay(self) -> float:
         """
@@ -110,6 +109,7 @@ class LinkedIn(Scraper):
         seen_ids = set()
         start = scraper_input.offset // 10 * 10 if scraper_input.offset else 0
         request_count = 0
+        empty_page_streak = 0
         seconds_old = (
             scraper_input.hours_old * 3600 if scraper_input.hours_old else None
         )
@@ -144,48 +144,37 @@ class LinkedIn(Scraper):
                 params["f_TPR"] = f"r{seconds_old}"
 
             params = {k: v for k, v in params.items() if v is not None}
-            # P4: Exponential backoff on 429 (max 3 retries)
-            max_retries = 3
-            base_delay = self._get_delay()
-            for attempt in range(max_retries):
-                try:
-                    response = self.session.get(
-                        f"{self.base_url}/jobs-guest/jobs/api/seeMoreJobPostings/search?",
-                        params=params,
-                        timeout=10,
-                    )
-                    if response.status_code == 429:
-                        if attempt < max_retries - 1:
-                            wait_time = (2 ** attempt) * base_delay
-                            log.warning(f"LinkedIn 429 - backing off for {wait_time:.1f}s (attempt {attempt + 1}/{max_retries})")
-                            time.sleep(wait_time)
-                            continue
-                        else:
-                            log.error("LinkedIn 429 - Max retries exceeded")
-                            return JobResponse(jobs=job_list)
-                    if response.status_code not in range(200, 400):
-                        err = f"LinkedIn response status code {response.status_code}"
-                        err += f" - {response.text}"
-                        log.error(err)
-                        return JobResponse(jobs=job_list)
-                    break  # Success - exit retry loop
-                except Exception as e:
-                    if "Proxy responded with" in str(e):
-                        log.error(f"LinkedIn: Bad proxy")
-                    else:
-                        log.error(f"LinkedIn: {str(e)}")
-                    return JobResponse(jobs=job_list)
+            response = self._request_with_backoff(
+                url=f"{self.base_url}/jobs-guest/jobs/api/seeMoreJobPostings/search?",
+                params=params,
+                timeout=10,
+                context="search page",
+            )
+            if response is None:
+                break
+
+            text_lower = response.text.lower()
+            if "captcha" in text_lower or "security verification" in text_lower:
+                log.warning("LinkedIn challenge page detected. Returning partial results.")
+                break
 
             soup = BeautifulSoup(response.text, "html.parser")
             job_cards = soup.find_all("div", class_="base-search-card")
             if len(job_cards) == 0:
-                return JobResponse(jobs=job_list)
+                empty_page_streak += 1
+                if empty_page_streak >= 2:
+                    break
+                start += self.jobs_per_page
+                continue
+            empty_page_streak = 0
 
             for job_card in job_cards:
                 href_tag = job_card.find("a", class_="base-card__full-link")
                 if href_tag and "href" in href_tag.attrs:
                     href = href_tag.attrs["href"].split("?")[0]
-                    job_id = href.split("-")[-1]
+                    job_id = self._extract_job_id(href)
+                    if not job_id:
+                        continue
 
                     if job_id in seen_ids:
                         continue
@@ -199,13 +188,14 @@ class LinkedIn(Scraper):
                         if not continue_search():
                             break
                     except Exception as e:
-                        raise LinkedInException(str(e))
+                        log.warning("Failed to process LinkedIn card %s: %s", job_id, e)
+                        continue
 
             if continue_search():
                 # P3: Use configurable delay instead of hardcoded
                 sleep_time = self._get_delay()
                 time.sleep(sleep_time)
-                start += len(job_cards)
+                start += max(len(job_cards), self.jobs_per_page)
 
         job_list = job_list[: scraper_input.results_wanted]
         return JobResponse(jobs=job_list)
@@ -218,27 +208,34 @@ class LinkedIn(Scraper):
         compensation = description = None
         if salary_tag:
             salary_text = salary_tag.get_text(separator=" ").strip()
-            salary_values = [currency_parser(value) for value in salary_text.split("-")]
-            salary_min = salary_values[0]
-            salary_max = salary_values[1]
-            currency = salary_text[0] if salary_text[0] != "$" else "USD"
-
-            compensation = Compensation(
-                min_amount=int(salary_min),
-                max_amount=int(salary_max),
-                currency=currency,
-            )
+            parts = [segment.strip() for segment in re.split(r"[-–—]", salary_text) if segment.strip()]
+            try:
+                if parts:
+                    parsed = [currency_parser(value) for value in parts]
+                    salary_min = parsed[0]
+                    salary_max = parsed[-1]
+                    currency = salary_text[0] if salary_text and salary_text[0] != "$" else "USD"
+                    compensation = Compensation(
+                        min_amount=int(salary_min),
+                        max_amount=int(salary_max),
+                        currency=currency,
+                    )
+            except Exception:
+                compensation = None
 
         title_tag = job_card.find("span", class_="sr-only")
-        title = title_tag.get_text(strip=True) if title_tag else "N/A"
+        title = title_tag.get_text(strip=True) if title_tag else ""
+        if not title:
+            title = "N/A"
 
         company_tag = job_card.find("h4", class_="base-search-card__subtitle")
         company_a_tag = company_tag.find("a") if company_tag else None
-        company_url = (
-            urlunparse(urlparse(company_a_tag.get("href"))._replace(query=""))
-            if company_a_tag and company_a_tag.has_attr("href")
-            else ""
-        )
+        company_url = ""
+        if company_a_tag and company_a_tag.has_attr("href"):
+            try:
+                company_url = urlunparse(urlparse(company_a_tag.get("href"))._replace(query=""))
+            except Exception:
+                company_url = company_a_tag.get("href") or ""
         company = company_a_tag.get_text(strip=True) if company_a_tag else "N/A"
 
         metadata_card = job_card.find("div", class_="base-search-card__metadata")
@@ -257,14 +254,20 @@ class LinkedIn(Scraper):
         if datetime_tag and "datetime" in datetime_tag.attrs:
             datetime_str = datetime_tag["datetime"]
             try:
-                date_posted = datetime.strptime(datetime_str, "%Y-%m-%d")
-            except:
+                date_posted = datetime.strptime(datetime_str, "%Y-%m-%d").date()
+            except Exception:
                 date_posted = None
         job_details = {}
         if full_descr:
             job_details = self._get_job_details(job_id)
             description = job_details.get("description")
+        if description is None:
+            short_desc_tag = job_card.find("p", class_="job-search-card__snippet")
+            description = short_desc_tag.get_text(" ", strip=True) if short_desc_tag else None
         is_remote = is_job_remote(title, description, location)
+        job_level = job_details.get("job_level")
+        if isinstance(job_level, str):
+            job_level = job_level.lower()
 
         return JobPost(
             id=f"li-{job_id}",
@@ -277,11 +280,11 @@ class LinkedIn(Scraper):
             job_url=f"{self.base_url}/jobs/view/{job_id}",
             compensation=compensation,
             job_type=job_details.get("job_type"),
-            job_level=job_details.get("job_level", "").lower(),
+            job_level=job_level,
             company_industry=job_details.get("company_industry"),
-            description=job_details.get("description"),
+            description=description,
             job_url_direct=job_details.get("job_url_direct"),
-            emails=extract_emails_from_text(description),
+            emails=extract_emails_from_text(description) if description else None,
             company_logo=job_details.get("company_logo"),
             job_function=job_details.get("job_function"),
         )
@@ -292,12 +295,13 @@ class LinkedIn(Scraper):
         :param job_page_url:
         :return: dict
         """
-        try:
-            response = self.session.get(
-                f"{self.base_url}/jobs/view/{job_id}", timeout=5
-            )
-            response.raise_for_status()
-        except:
+        response = self._request_with_backoff(
+            url=f"{self.base_url}/jobs/view/{job_id}",
+            params=None,
+            timeout=8,
+            context=f"job detail {job_id}",
+        )
+        if response is None:
             return {}
         if "linkedin.com/signup" in response.url:
             return {}
@@ -315,7 +319,7 @@ class LinkedIn(Scraper):
             elif self.scraper_input.description_format == DescriptionFormat.PLAIN:
                 description = plain_converter(description)
         h3_tag = soup.find(
-            "h3", text=lambda text: text and "Job function" in text.strip()
+            "h3", string=lambda text: text and "Job function" in text.strip()
         )
 
         job_function = None
@@ -347,7 +351,7 @@ class LinkedIn(Scraper):
         :param metadata_card
         :return: location
         """
-        location = Location(country=Country.from_string(self.country))
+        location = Location(country=self._safe_country(self.country))
         if metadata_card is not None:
             location_tag = metadata_card.find(
                 "span", class_="job-search-card__location"
@@ -359,13 +363,71 @@ class LinkedIn(Scraper):
                 location = Location(
                     city=city,
                     state=state,
-                    country=Country.from_string(self.country),
+                    country=self._safe_country(self.country),
                 )
             elif len(parts) == 3:
                 city, state, country = parts
-                country = Country.from_string(country)
+                country = self._safe_country(country)
                 location = Location(city=city, state=state, country=country)
+            elif len(parts) == 1 and parts[0] != "N/A":
+                location = Location(city=parts[0], country=self._safe_country(self.country))
         return location
+
+    def _safe_country(self, value: str) -> Country | str:
+        """Safely maps country text to Country enum, preserving unknowns as raw strings."""
+        try:
+            return Country.from_string(value)
+        except Exception:
+            return value
+
+    def _extract_job_id(self, href: str) -> str | None:
+        """Extracts LinkedIn numeric job id from href."""
+        if not href:
+            return None
+        match = re.search(r"/jobs/view/(?:[\w-]+-)?(\d+)", href)
+        if match:
+            return match.group(1)
+        fallback = href.split("-")[-1]
+        return fallback if fallback.isdigit() else None
+
+    def _request_with_backoff(
+        self,
+        *,
+        url: str,
+        params: dict[str, Any] | None,
+        timeout: int,
+        context: str,
+    ):
+        """Executes resilient GET requests with retry/backoff on transient errors."""
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = self.session.get(url, params=params, timeout=timeout)
+            except Exception as exc:
+                if attempt == self.max_retries:
+                    log.error("LinkedIn %s failed: %s", context, exc)
+                    return None
+                self._retry_sleep(attempt, f"{context} exception")
+                continue
+
+            if response.status_code in self.transient_statuses:
+                if attempt == self.max_retries:
+                    log.warning("LinkedIn %s transient status persisted: %s", context, response.status_code)
+                    return None
+                self._retry_sleep(attempt, f"{context} status={response.status_code}")
+                continue
+
+            if response.status_code not in range(200, 400):
+                log.warning("LinkedIn %s non-success status: %s", context, response.status_code)
+                return None
+            return response
+        return None
+
+    def _retry_sleep(self, attempt: int, reason: str) -> None:
+        """Backoff helper for LinkedIn retries with jitter."""
+        base_delay = self._get_delay()
+        wait = (2 ** (attempt - 1)) * base_delay + random.uniform(0.2, 1.0)
+        log.warning("LinkedIn retry in %.1fs (%s)", wait, reason)
+        time.sleep(wait)
 
     def _parse_job_url_direct(self, soup: BeautifulSoup) -> str | None:
         """
