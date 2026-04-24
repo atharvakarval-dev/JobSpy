@@ -7,13 +7,13 @@ headers = {
     "content-type": "application/json",
     "origin": "https://www.glassdoor.com",
     "referer": "https://www.glassdoor.com/",
-    "sec-ch-ua": '"Chromium";v="118", "Google Chrome";v="118", "Not=A?Brand";v="99"',
+    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
     "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
+    "sec-ch-ua-platform": '"Windows"',
     "sec-fetch-dest": "empty",
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
-    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 }
 query_template = """
         query JobSearchResultsQuery(
@@ -58,20 +58,6 @@ query_template = """
                 indeedCtk
                 jobListings {
                     ...JobView
-                    __typename
-                }
-                jobListingSeoLinks {
-                    linkItems {
-                        position
-                        url
-                        __typename
-                    }
-                    __typename
-                }
-                jobSearchTrackingKey
-                jobsPageSeoData {
-                    pageMetaDescription
-                    pageTitle
                     __typename
                 }
                 paginationCursors {

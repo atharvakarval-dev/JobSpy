@@ -61,7 +61,7 @@ class Glassdoor(Scraper):
         self.base_url = self.scraper_input.country.get_glassdoor_url()
 
         self.session = create_session(
-            proxies=self.proxies, ca_cert=self.ca_cert, has_retry=True
+            proxies=self.proxies, ca_cert=self.ca_cert, has_retry=True, is_tls=True
         )
         token = self._get_csrf_token()
         headers["gd-csrf-token"] = token if token else fallback_token
@@ -112,7 +112,7 @@ class Glassdoor(Scraper):
         try:
             payload = self._add_payload(location_id, location_type, page_num, cursor)
             response = self.session.post(
-                f"{self.base_url}/graph",
+                "https://www.glassdoor.com/graph",
                 timeout_seconds=15,
                 data=payload,
             )
@@ -121,6 +121,7 @@ class Glassdoor(Scraper):
                 raise GlassdoorException(exc_msg)
             res_json = response.json()[0]
             if "errors" in res_json:
+                log.error(f"Glassdoor API errors: {res_json['errors']}")
                 raise ValueError("Error encountered in API response")
         except (
             requests.exceptions.ReadTimeout,
@@ -246,7 +247,7 @@ class Glassdoor(Scraper):
                 """,
             }
         ]
-        res = requests.post(url, json=body, headers=headers)
+        res = self.session.post(url, data=json.dumps(body))
         if res.status_code != 200:
             return None
         data = res.json()[0]
